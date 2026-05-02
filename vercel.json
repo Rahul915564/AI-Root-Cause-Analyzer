@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "buildCommand": "node artifacts/api-server/build.vercel.mjs && pnpm --filter @workspace/rca-app run build",
+  "outputDirectory": "artifacts/rca-app/dist/public",
+  "build": {
+    "env": {
+      "PORT": "3000",
+      "BASE_PATH": "/"
+    }
+  }
+}
