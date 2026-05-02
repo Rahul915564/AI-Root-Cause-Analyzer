@@ -3,20 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AI Root Cause Analyzer API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: analysis
+    description: Root cause analysis operations
+  - name: history
+    description: Analysis history operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +27,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /analyze:
+    post:
+      operationId: analyzeError
+      tags: [analysis]
+      summary: Analyze error log and return root cause
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /history:
+    get:
+      operationId: getHistory
+      tags: [history]
+      summary: Get last 10 analyses
+      parameters:
+        - name: errorType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by error type
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Analysis history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+
+  /history/{id}:
+    get:
+      operationId: getAnalysisById
+      tags: [history]
+      summary: Get a specific analysis by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analysis record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisRecord"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAnalysis
+      tags: [history]
+      summary: Delete an analysis record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [history]
+      summary: Get analysis statistics summary
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +144,205 @@ components:
       required:
         - status
 
+    AnalyzeRequest:
+      type: object
+      properties:
+        input:
+          type: string
+          description: The error log, stack trace, or error message to analyze
+        inputType:
+          type: string
+          enum: [paste, file, message]
+          description: How the input was provided
+        fileName:
+          type: string
+          description: Optional file name if uploaded
+      required:
+        - input
+        - inputType
+
+    Fix:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        codeSnippet:
+          type: string
+        language:
+          type: string
+      required:
+        - title
+        - description
+
+    StackOverflowLink:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+      required:
+        - title
+        - url
+
+    AnalysisResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        errorType:
+          type: string
+          description: Detected error category (NullPointer, MemoryLeak, Timeout, etc.)
+        language:
+          type: string
+          description: Detected programming language or platform
+        rootCause:
+          type: string
+          description: Identified root cause explanation
+        confidenceScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Confidence score 0-100
+        explanation:
+          type: array
+          items:
+            type: string
+          description: Step-by-step explanation
+        priority:
+          type: string
+          enum: [Critical, High, Medium, Low]
+        fixes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Fix"
+        stackOverflowLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/StackOverflowLink"
+        analyzedAt:
+          type: string
+          format: date-time
+      required:
+        - errorType
+        - language
+        - rootCause
+        - confidenceScore
+        - explanation
+        - priority
+        - fixes
+        - stackOverflowLinks
+        - analyzedAt
+
+    AnalysisRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        inputSnippet:
+          type: string
+          description: First 200 chars of the input
+        errorType:
+          type: string
+        language:
+          type: string
+        rootCause:
+          type: string
+        confidenceScore:
+          type: integer
+        priority:
+          type: string
+        fixes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Fix"
+        stackOverflowLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/StackOverflowLink"
+        explanation:
+          type: array
+          items:
+            type: string
+        analyzedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - inputSnippet
+        - errorType
+        - language
+        - rootCause
+        - confidenceScore
+        - priority
+        - fixes
+        - stackOverflowLinks
+        - explanation
+        - analyzedAt
+
+    HistoryResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisRecord"
+        total:
+          type: integer
+      required:
+        - records
+        - total
+
+    ErrorTypeStat:
+      type: object
+      properties:
+        errorType:
+          type: string
+        count:
+          type: integer
+      required:
+        - errorType
+        - count
+
+    StatsResponse:
+      type: object
+      properties:
+        totalAnalyses:
+          type: integer
+        errorTypeBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorTypeStat"
+        avgConfidence:
+          type: number
+        criticalCount:
+          type: integer
+      required:
+        - totalAnalyses
+        - errorTypeBreakdown
+        - avgConfidence
+        - criticalCount
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
