@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
-import { History, Download, Trash2, Eye, ChevronRight, ExternalLink } from "lucide-react";
+import { History, Download, Trash2, Eye, ChevronRight, ExternalLink, Copy, Check, Share2 } from "lucide-react";
 
 const ERROR_TYPES = ["All", "NullPointerException", "TypeError", "ReferenceError", "AttributeError", "ImportError", "KeyError", "MemoryError", "TimeoutError", "DatabaseConnectionError", "MySQLError", "HTTPNotFound", "InternalServerError", "CORSError", "SyntaxError", "SystemError", "UnhandledPromiseRejection", "UnknownError"];
 
@@ -33,22 +33,48 @@ function ConfidenceBadge({ score }: { score: number }) {
   return <span className={`font-mono font-bold text-sm ${color}`}>{score}%</span>;
 }
 
-function DetailModal({ id, open, onClose }: { id: number | null; open: boolean; onClose: () => void }) {
-  const record = useGetAnalysisById(id ?? 0, {
-    query: { enabled: !!id && open, queryKey: getGetAnalysisByIdQueryKey(id ?? 0) },
-  });
+function ModalShareButton({ id }: { id: number }) {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const url = `${window.location.origin}${base}/share/${id}`;
 
-  const data = record as any;
+  const copy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast({ description: "Share link copied to clipboard" });
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <button
+      data-testid={`button-share-modal-${id}`}
+      onClick={copy}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors font-mono flex-shrink-0"
+    >
+      {copied ? <Check className="w-3 h-3 text-green-400" /> : <Share2 className="w-3 h-3" />}
+      {copied ? "Copied!" : "Share"}
+    </button>
+  );
+}
+
+function DetailModal({ id, open, onClose }: { id: number | null; open: boolean; onClose: () => void }) {
+  const { data, isLoading: recordLoading } = useGetAnalysisById(id ?? 0, {
+    query: { enabled: !!id && open, queryKey: getGetAnalysisByIdQueryKey(id ?? 0) },
+  }) as any;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-mono text-primary">
-            {data?.errorType ?? "Analysis Detail"}
-          </DialogTitle>
+          <div className="flex items-center justify-between gap-3 pr-6">
+            <DialogTitle className="font-mono text-primary">
+              {data?.errorType ?? "Analysis Detail"}
+            </DialogTitle>
+            {data?.id && <ModalShareButton id={data.id} />}
+          </div>
         </DialogHeader>
-        {record === undefined || (record as any).isLoading ? (
+        {recordLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-6 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -129,7 +155,7 @@ export default function HistoryPage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const params = errorTypeFilter !== "All" ? { errorType: errorTypeFilter, limit: 10 } : { limit: 10 };
-  const history = useGetHistory(params, {
+  const { data: history } = useGetHistory(params, {
     query: { queryKey: getGetHistoryQueryKey(params) },
   }) as any;
 

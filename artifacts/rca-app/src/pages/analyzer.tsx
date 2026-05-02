@@ -11,9 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Upload, Zap, CheckCircle, AlertTriangle, XCircle, Info,
-  ExternalLink, Copy, ChevronRight, FileText, Terminal,
-  Loader2, Search, Brain, Wrench, Link2, ScanLine,
+  ExternalLink, Copy, Check, ChevronRight, FileText, Terminal,
+  Loader2, Search, Brain, Wrench, Link2, ScanLine, Share2,
 } from "lucide-react";
+import { useState as useLocalState } from "react";
 
 interface Fix {
   title: string;
@@ -115,10 +116,39 @@ function StageBar({ stage, message }: { stage: string; message: string }) {
   );
 }
 
+// ─── Inline Share Button ──────────────────────────────────────────────────────
+function InlineShareButton({ resultId }: { resultId: number }) {
+  const [copied, setCopied] = useLocalState(false);
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const url = `${window.location.origin}${base}/share/${resultId}`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div className="flex items-center gap-2 pt-2 border-t border-border animate-in fade-in duration-400">
+      <button
+        data-testid="button-share-result"
+        onClick={copy}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm border border-border text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors font-mono"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Share2 className="w-3.5 h-3.5" />}
+        {copied ? "Link copied!" : "Share analysis"}
+      </button>
+      {copied && (
+        <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">{url}</span>
+      )}
+    </div>
+  );
+}
+
 // ─── Streaming Result Panel ───────────────────────────────────────────────────
 function StreamingResultPanel({
   stage, stageMessage, errorType, language, confidenceScore, priority,
-  rootCause, explanation, fixes, stackOverflowLinks, isStreaming,
+  rootCause, explanation, fixes, stackOverflowLinks, isStreaming, resultId,
 }: {
   stage: string;
   stageMessage: string;
@@ -131,6 +161,7 @@ function StreamingResultPanel({
   fixes: Fix[];
   stackOverflowLinks: SOLink[];
   isStreaming: boolean;
+  resultId?: number;
 }) {
   const { t } = useLanguage();
   const pConfig = priority ? PRIORITY_CONFIG[priority] : null;
@@ -272,6 +303,11 @@ function StreamingResultPanel({
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {/* Share button — only when complete and saved to DB */}
+      {stage === "complete" && resultId && (
+        <InlineShareButton resultId={resultId} />
       )}
     </div>
   );
@@ -509,6 +545,7 @@ export default function AnalyzerPage() {
                 fixes={state.fixes}
                 stackOverflowLinks={state.stackOverflowLinks}
                 isStreaming={isStreaming}
+                resultId={state.result?.id}
               />
             )}
           </CardContent>

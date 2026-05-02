@@ -3,12 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider, useLanguage } from "@/hooks/use-language";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ActivitySquare, History, BarChart3, Globe } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import AnalyzerPage from "@/pages/analyzer";
 import HistoryPage from "@/pages/history";
 import StatsPage from "@/pages/stats";
+import SharePage from "@/pages/share";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,14 +67,34 @@ function NavBar() {
   );
 }
 
-function Router() {
+function AppShell() {
+  const [location] = useLocation();
+  const isSharePage = location.startsWith("/share/");
+
   return (
-    <Switch>
-      <Route path="/" component={AnalyzerPage} />
-      <Route path="/history" component={HistoryPage} />
-      <Route path="/stats" component={StatsPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <div className="min-h-screen bg-background text-foreground">
+      {!isSharePage && <NavBar />}
+      <Switch>
+        {/* Share page: pass id explicitly via render function to guarantee params */}
+        <Route path="/share/:id">
+          {(params: { id?: string } | null) => (
+            <SharePage id={Number(params?.id ?? 0)} />
+          )}
+        </Route>
+
+        {/* All other pages inside the standard padded layout */}
+        <Route>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Switch>
+              <Route path="/" component={AnalyzerPage} />
+              <Route path="/history" component={HistoryPage} />
+              <Route path="/stats" component={StatsPage} />
+              <Route component={NotFound} />
+            </Switch>
+          </main>
+        </Route>
+      </Switch>
+    </div>
   );
 }
 
@@ -87,12 +108,7 @@ function App() {
       <TooltipProvider>
         <LanguageProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <div className="min-h-screen bg-background text-foreground">
-              <NavBar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <Router />
-              </main>
-            </div>
+            <AppShell />
           </WouterRouter>
           <Toaster />
         </LanguageProvider>

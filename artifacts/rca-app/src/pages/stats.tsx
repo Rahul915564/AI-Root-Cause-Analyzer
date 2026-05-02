@@ -44,11 +44,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function StatsPage() {
   const { t } = useLanguage();
 
-  const stats = useGetStats({
+  const { data: stats, isLoading } = useGetStats({
     query: { queryKey: getGetStatsQueryKey() },
   }) as any;
-
-  const isLoading = stats === undefined;
 
   return (
     <div className="space-y-6">
