@@ -7,5 +7,20 @@
       "PORT": "3000",
       "BASE_PATH": "/"
     }
-  }
+  },
+  "functions": {
+    "artifacts/api-server/dist/vercel-app.cjs": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/artifacts/api-server/dist/vercel-app.cjs"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
